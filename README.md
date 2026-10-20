@@ -231,3 +231,27 @@ perubahan `/profile`. Gantikan fail kod projek dengan versi baharu (termasuk `la
 folder `data/` dan kunci penyulitan sedia ada**. Jangan salin `.env.example` ke atas `.env`. Jika menggantikan keseluruhan
 folder, backup `.env` dan `data/` dahulu dan pulangkan kedua-duanya secara selamat sebelum menjalankan bot.
 Dependencies tidak berubah. Jalankan `python -m laily.bot` dari folder projek, kemudian tetapkan `/profile` dalam Telegram.
+
+## Hashtag sumber channel secara automatik
+
+Pratonton Facebook/Mudah dan kedua-dua bahasa dalam `draft.json` kini mengandungi hashtag asal listing:
+
+| Channel Telegram | Hashtag |
+|---|---|
+| `umairpropertylisting` | `#xum` |
+| `EjenHartanah_Sufi` | `#xsfi` |
+| `brotherkhaiproperty` | `#xkhi` |
+| `AsrizadBakriListing` | `#xas` |
+| `Blacky_Listing_Property` | `#nrhfdz` |
+
+Channel lain menggunakan `#Nama_Channel`: ruang menjadi `_`, emoji dan tanda baca dibuang.
+Jika tajuk tidak tersedia, username digunakan. Padanan khas menggunakan username tepat tanpa mengira huruf
+besar/kecil, bukan perkataan dalam caption. Metadata forward baharu menyimpan ID channel, username dan tajuk;
+rekod lama yang mempunyai pautan sumber awam juga disokong. Jika username berubah, padanan khas perlu dikemas kini.
+Album tidak mengulang hashtag yang sama. Jika terdapat beberapa sumber, semua hashtag berlainan dikekalkan.
+
+Jika Telegram menyembunyikan asal, atau listing hanya disalin tanpa metadata forward, bot tidak meneka sumber
+berdasarkan nama ejen atau pautan dalam caption. `NEEDS_REVIEW` menyatakan sumber perlu semakan; tiada hashtag
+channel direka. Versi ini belum menyediakan pemilihan sumber secara manual. Sumber asal dalam pangkalan data
+serta ZIP tetap dikekalkan. Profil `/profile` hanya menukar bahagian hubungan draf; ia tidak menukar sumber.
+Hashtag tidak membuktikan hak menggunakan listing/gambar atau bahawa hartanah masih tersedia.

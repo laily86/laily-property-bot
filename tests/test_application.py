@@ -128,7 +128,7 @@ async def test_authorized_forwarded_message_local_draft_and_preview(bot):
     message = SimpleNamespace(text=SAMPLE, caption=None, photo=[], media_group_id=None,
                               message_id=10, chat_id=123,
                               forward_origin=SimpleNamespace(type="channel", date=__import__('datetime').datetime.now(),
-                                  chat=SimpleNamespace(title="Example", username="example"), message_id=88))
+                                  chat=SimpleNamespace(id=-100123, title="Example", username="example"), message_id=88))
     update = update_for(effective_message=message, update_id=1)
     context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()), user_data={})
     await bot.received(update, context)

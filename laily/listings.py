@@ -2,6 +2,8 @@
 import hashlib
 import re
 
+from .sources import source_hashtags, source_needs_review
+
 FIELDS = ("property_type", "location", "price", "bedrooms", "bathrooms", "floor_area",
           "tenure", "facilities", "agent_details", "availability")
 LABELS = {
@@ -69,6 +71,8 @@ def review_reasons(record):
         reasons.append("Format harga perlu semakan (contoh RM 450,000 atau RM 1,500 / bulan).")
     if not record.get("reuse_confirmed"):
         reasons.append("Kebenaran penggunaan listing dan gambar belum disahkan.")
+    if source_needs_review(record):
+        reasons.append("Sumber channel tidak lengkap atau disembunyikan; hashtag perlu semakan manual.")
     if record.get("duplicate_candidates"):
         reasons.append("Kemungkinan hartanah pendua; semak rekod berkaitan.")
     return reasons
@@ -100,6 +104,10 @@ def generate(record, platform, contact_profile=None):
     if not f.get("availability_confirmed"):
         bm.append("Ketersediaan belum disahkan. Sila sahkan dengan pemilik atau ejen.")
         en.append("Availability is unconfirmed. Please confirm with the owner or agent.")
-    return {"platform": platform, "title_bm": title, "title_en": title, "price": price,
+    hashtags = source_hashtags(record)
+    if hashtags:
+        bm.append(" ".join(hashtags))
+        en.append(" ".join(hashtags))
+    return {"platform": platform, "source_hashtags": hashtags, "title_bm": title, "title_en": title, "price": price,
             "description_bm": "\n".join(bm), "description_en": "\n".join(en),
             "review_reasons": review_reasons(record)}

@@ -177,6 +177,9 @@ class Bot:
             channel = getattr(origin, "chat", None)
             if channel:
                 result["chat_title"] = channel.title
+                result["channel_id"] = channel.id
+                if channel.username:
+                    result["channel_username"] = channel.username
                 original_id = getattr(origin, "message_id", None)
                 result["original_message_id"] = original_id
                 if channel.username and original_id:
