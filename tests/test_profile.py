@@ -72,7 +72,7 @@ def test_invalid_profile_rejected(value):
 @pytest.mark.asyncio
 async def test_profile_command_authorized_only_and_preview_export_use_it(tmp_path):
     bot = Bot(Settings('123:unused', 123, Fernet.generate_key(), tmp_path))
-    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(), send_document=AsyncMock()))
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=999)), send_document=AsyncMock()))
     def update(user_id, text):
         return SimpleNamespace(effective_user=SimpleNamespace(id=user_id),
             effective_chat=SimpleNamespace(id=123, type='private'),

@@ -21,6 +21,9 @@ LABELS = {
 
 
 def extract(text):
+    # Telegram listings often place labelled numeric facts on the same line.
+    numeric_labels = "|".join(LABELS[k] for k in ("bedrooms", "bathrooms", "floor_area", "price"))
+    text = re.sub(rf"(?<=\S)[ \t]+(?=(?:{numeric_labels})\s*[:=])", "\n", text, flags=re.I)
     result = {field: None for field in FIELDS}
     for field, labels in LABELS.items():
         matches = re.findall(rf"^(?:{labels})\s*[:=]\s*([^\n]+)$", text, re.I | re.M)
@@ -57,8 +60,20 @@ def property_signature(fields):
     return fingerprint(" | ".join(fields[k] for k in keys))
 
 
+def normalized_fields(fields):
+    f = dict(fields)
+    # Repair the old parser's combined bedroom value without overwriting stored edits.
+    bedrooms = f.get("bedrooms")
+    if isinstance(bedrooms, str) and re.search(r"(?:bathrooms?|bilik air)\s*[:=]", bedrooms, re.I):
+        recovered = extract("Bedrooms: " + bedrooms)
+        f["bedrooms"] = recovered["bedrooms"]
+        if not f.get("bathrooms"):
+            f["bathrooms"] = recovered["bathrooms"]
+    return f
+
+
 def review_reasons(record):
-    f = record["fields"]
+    f = normalized_fields(record["fields"])
     reasons = []
     for key in ("property_type", "location", "price", "bedrooms", "bathrooms", "floor_area", "tenure"):
         if not f.get(key):
@@ -83,7 +98,7 @@ def generate(record, platform, contact_profile=None):
         raise ValueError("Platform tidak sah")
     # Render a copy: original agent identity, REN and source records remain untouched.
     f = {key: (remove_listing_hashtags(value) if isinstance(value, str) else value)
-         for key, value in record["fields"].items()}
+         for key, value in normalized_fields(record["fields"]).items()}
     if contact_profile is not None:
         f["agent_details"] = contact_profile.contact_text()
     title = " — ".join(x for x in (f.get("property_type"), f.get("location")) if x) or "Hartanah / Property"

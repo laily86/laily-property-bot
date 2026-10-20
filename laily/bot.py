@@ -4,6 +4,7 @@ import json
 import logging
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputFile
+from telegram.error import BadRequest
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
 from .config import Settings
@@ -26,6 +27,7 @@ class Bot:
         self.settings = settings
         self.store = Store(settings.data_dir, settings.key)
         self.album_tasks = {}
+        self.preview_locks = {}
 
     def allowed(self, update):
         user, chat = update.effective_user, update.effective_chat
@@ -35,12 +37,15 @@ class Bot:
         return permitted
 
     def buttons(self, record_id):
-        return InlineKeyboardMarkup([
+        rows = [
             [InlineKeyboardButton("Preview Facebook", callback_data=f"preview:facebook:{record_id}"),
              InlineKeyboardButton("Preview Mudah", callback_data=f"preview:mudah:{record_id}")],
             [InlineKeyboardButton("Edit", callback_data=f"edit:local:{record_id}"),
              InlineKeyboardButton("Save Draft", callback_data=f"save:local:{record_id}")],
-            [InlineKeyboardButton("Draft Status", callback_data=f"status:local:{record_id}")]])
+            [InlineKeyboardButton("Draft Status", callback_data=f"status:local:{record_id}")]]
+        if self.store.get(record_id)["photos"]:
+            rows.append([InlineKeyboardButton("Gabung gambar dengan draf teks", callback_data=f"choose:local:{record_id}")])
+        return InlineKeyboardMarkup(rows)
 
     async def send(self, bot, chat_id, text, **kwargs):
         # Never parse listing content as HTML/Markdown; forwarded text is untrusted data.
@@ -105,6 +110,12 @@ class Bot:
                 await self.send(context.bot, chat_id, "ID draf tidak ditemui.")
 
     async def preview(self, bot, chat_id, record, platform):
+        listing_id = self.store.get(record["id"])["id"]
+        lock = self.preview_locks.setdefault(listing_id, asyncio.Lock())
+        async with lock:
+            await self.render_preview(bot, chat_id, self.store.get(listing_id), platform)
+
+    async def render_preview(self, bot, chat_id, record, platform):
         draft = generate(record, platform, self.store.contact_profile())
         self.store.audit("preview", record["id"], {"platform": platform})
         text = (f"{record['id']} | {platform.upper()} | LOCAL_DRAFT\n"
@@ -112,7 +123,31 @@ class Bot:
                 f"EN: {draft['title_en']}\n{draft['description_en']}\n\n"
                 "SEMAKAN:\n" + "\n".join(draft["review_reasons"]) +
                 f"\nGambar: {len(record['photos'])}\nPendua berpotensi: {', '.join(record['duplicate_candidates']) or 'Tiada dikesan'}")
-        await self.send(bot, chat_id, text, reply_markup=self.buttons(record["id"]))
+        chunks = [text[i:i + 3500] for i in range(0, len(text), 3500)]
+        ids = self.store.preview_ids(record["id"], platform, chat_id)
+        for index, chunk in enumerate(chunks):
+            markup = self.buttons(record["id"]) if index == len(chunks) - 1 else None
+            if index < len(ids):
+                try:
+                    await bot.edit_message_text(chat_id=chat_id, message_id=ids[index], text=chunk, reply_markup=markup)
+                    continue
+                except BadRequest as exc:
+                    if "message is not modified" in str(exc).lower():
+                        continue
+                    if "message to edit not found" not in str(exc).lower() and "message can't be edited" not in str(exc).lower():
+                        raise
+            message = await bot.send_message(chat_id=chat_id, text=chunk, reply_markup=markup)
+            if index < len(ids):
+                ids[index] = message.message_id
+            else:
+                ids.append(message.message_id)
+            self.store.save_preview_ids(record["id"], platform, chat_id, ids)
+        for old_id in ids[len(chunks):]:
+            try:
+                await bot.delete_message(chat_id=chat_id, message_id=old_id)
+            except BadRequest:
+                self.store.audit("old_preview_cleanup_failed", record["id"])
+        self.store.save_preview_ids(record["id"], platform, chat_id, ids[:len(chunks)])
 
     async def callback(self, update, context):
         if not self.allowed(update):
@@ -121,12 +156,36 @@ class Bot:
         await query.answer()
         try:
             action, platform, listing_id = query.data.split(":")
-            if action not in {"preview", "edit", "save", "status", "confirm", "export"}:
+            if action not in {"preview", "edit", "save", "status", "confirm", "export", "choose", "checkmerge", "merge"}:
                 raise ValueError("Tindakan tidak sah")
             record = self.store.get(listing_id)
             self.store.audit("button", listing_id, {"action": action})
             chat_id = update.effective_chat.id
-            if action == "preview":
+            if action == "choose":
+                candidates = [r for r in self.store.all() if r["id"] != record["id"] and r["originals"]][:10]
+                rows = [[InlineKeyboardButton(
+                    f"{r['id']} | {(r['fields'].get('location') or r['originals'][0])[:55]}",
+                    callback_data=f"checkmerge:{r['id']}:{record['id']}") ] for r in candidates]
+                if not rows:
+                    await self.send(context.bot, chat_id, "Tiada draf teks lain. Forward teks listing dahulu, kemudian cuba lagi.")
+                else:
+                    await self.send(context.bot, chat_id,
+                        "Pilih draf teks bagi hartanah yang SAMA. Jangan gabung gambar hartanah berlainan.",
+                        reply_markup=InlineKeyboardMarkup(rows))
+            elif action == "checkmerge":
+                target = self.store.get(platform)
+                await self.send(context.bot, chat_id,
+                    f"Gabung {len(record['photos'])} gambar daripada {record['id']} dengan draf {target['id']}?\n"
+                    + "Teks sasaran:\n" + "\n".join(target["originals"])[:1200] +
+                    "\nSahkan hanya jika teks dan gambar hartanah yang sama. Hak guna dan ketersediaan perlu disahkan semula.",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton(
+                        "Ya, hartanah yang sama — Gabung", callback_data=f"merge:{target['id']}:{record['id']}")]]))
+            elif action == "merge":
+                merged = self.store.merge_photos(platform, listing_id)
+                await self.send(context.bot, chat_id,
+                    f"Gambar digabung dalam draf {merged['id']}. Rekod asal dikekalkan; semak dan sahkan hak guna semula.")
+                await self.preview(context.bot, chat_id, merged, "facebook")
+            elif action == "preview":
                 await self.preview(context.bot, chat_id, record, platform)
             elif action == "edit":
                 context.user_data["editing"] = listing_id

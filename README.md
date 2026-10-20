@@ -261,3 +261,24 @@ harga dan penerangan draf; hanya hashtag sumber yang ditetapkan ditambah pada ak
 Pembersihan dilakukan semasa menjana pratonton/eksport, bukan pada rekod asal. Nombor unit seperti `#12-03`,
 `Unit #A12` dan pautan URL dikekalkan untuk mengelakkan kehilangan fakta. Semak kes yang mengelirukan secara manual.
 Teks asal termasuk hashtag lamanya masih ada dalam `original-and-source.json` untuk rujukan, bukan untuk disiarkan.
+
+## Teks dan gambar dihantar berasingan; pratonton berulang
+
+Teks dan album berasingan tidak digabung secara automatik kerana mungkin milik hartanah yang berlainan.
+Pada draf yang mempunyai gambar, tekan **Gabung gambar dengan draf teks**. Pilih satu daripada 10 draf teks terkini,
+semak teks sasaran, kemudian tekan **Ya, hartanah yang sama — Gabung** hanya jika betul. Untuk draf lama yang tidak
+mempunyai butang baharu pada mesejnya, gunakan `/facebook ID_DRAF_GAMBAR` untuk membuka pratonton terkini.
+
+Gambar, teks asal dan sumber digabung ke draf sasaran secara transaksi. Fakta yang bercanggah akan menghalang
+penggabungan sehingga dibetulkan melalui Edit. Rekod album asal disimpan sebagai rekod gabungan untuk audit;
+ia tidak lagi disenaraikan sebagai draf berasingan dalam `/drafts`. Butang draf lama merujuk ke draf sasaran.
+Foto album yang sama yang tiba lewat juga dikaitkan ke sasaran selepas restart. Pengesahan hak guna dan ketersediaan
+dibatalkan untuk semakan semula. Pakej yang sudah dimuat turun tidak berubah; tiada data di platform luar ditulis.
+
+Pratonton berikutnya mengemas kini mesej bot sedia ada bagi setiap draf/platform/chat; BM dan English masih dipaparkan
+bersama dalam satu pratonton. Jika teks panjang, beberapa mesej diperlukan. Jika mesej lama telah dipadam atau tidak
+boleh diedit, bot menghantar pengganti. Ralat rangkaian tidak dianggap sebagai keperluan untuk menghantar salinan baharu.
+Mesej pratonton lama daripada sebelum kemas kini tidak dipadam automatik, kerana ID mesejnya belum direkodkan.
+
+Label pada baris sama, seperti `Bedrooms: 3 Bathrooms: 2`, kini dipisahkan. Medan bilik tidur lama yang mengandungi
+label bilik air turut dibetulkan ketika paparan tanpa menukar teks asal atau meneka fakta lain yang tiada.

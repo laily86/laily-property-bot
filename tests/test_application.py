@@ -114,7 +114,7 @@ def update_for(user_id=123, chat_type="private", **kwargs):
 
 @pytest.mark.asyncio
 async def test_unauthorized_commands_messages_and_callbacks_rejected(bot):
-    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()), user_data={})
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=999))), user_data={})
     for update in (update_for(999), update_for(123, "group")):
         await bot.command(update, context)
         await bot.received(update, context)
@@ -130,7 +130,7 @@ async def test_authorized_forwarded_message_local_draft_and_preview(bot):
                               forward_origin=SimpleNamespace(type="channel", date=__import__('datetime').datetime.now(),
                                   chat=SimpleNamespace(id=-100123, title="Example", username="example"), message_id=88))
     update = update_for(effective_message=message, update_id=1)
-    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()), user_data={})
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=999))), user_data={})
     await bot.received(update, context)
     r = bot.store.all()[0]
     assert r["sources"][0]["source_url"] == "https://t.me/example/88"
@@ -143,7 +143,7 @@ async def test_authorized_forwarded_message_local_draft_and_preview(bot):
 @pytest.mark.asyncio
 async def test_save_confirmation_then_export_and_audit(bot):
     r, _ = bot.store.ingest(SAMPLE, {"kind": "sample"})
-    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(), send_document=AsyncMock()))
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=999)), send_document=AsyncMock()))
     async def click(data):
         q = SimpleNamespace(data=data, answer=AsyncMock())
         await bot.callback(update_for(callback_query=q), context)
@@ -169,7 +169,7 @@ def test_config_fails_closed(monkeypatch):
 @pytest.mark.asyncio
 async def test_real_transport_photo_album_accumulation_and_shutdown(bot):
     remote = SimpleNamespace(download_as_bytearray=AsyncMock(return_value=bytearray(b"jpeg content")))
-    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock()), user_data={})
+    context = SimpleNamespace(bot=SimpleNamespace(send_message=AsyncMock(return_value=SimpleNamespace(message_id=999))), user_data={})
     for n in range(2):
         photo = SimpleNamespace(file_size=12, file_unique_id=f"photo{n}", get_file=AsyncMock(return_value=remote))
         message = SimpleNamespace(text=None, caption=SAMPLE if n == 0 else None,
