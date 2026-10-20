@@ -2,7 +2,7 @@
 import hashlib
 import re
 
-from .sources import source_hashtags, source_needs_review
+from .sources import remove_listing_hashtags, source_hashtags, source_needs_review
 
 FIELDS = ("property_type", "location", "price", "bedrooms", "bathrooms", "floor_area",
           "tenure", "facilities", "agent_details", "availability")
@@ -82,7 +82,8 @@ def generate(record, platform, contact_profile=None):
     if platform not in ("facebook", "mudah"):
         raise ValueError("Platform tidak sah")
     # Render a copy: original agent identity, REN and source records remain untouched.
-    f = dict(record["fields"])
+    f = {key: (remove_listing_hashtags(value) if isinstance(value, str) else value)
+         for key, value in record["fields"].items()}
     if contact_profile is not None:
         f["agent_details"] = contact_profile.contact_text()
     title = " — ".join(x for x in (f.get("property_type"), f.get("location")) if x) or "Hartanah / Property"

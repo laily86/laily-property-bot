@@ -75,3 +75,36 @@ def test_forward_metadata_captures_username_for_renamed_channel(tmp_path):
     assert source['channel_id'] == -100123
     assert source['channel_username'] == 'ASRIZADBAKRILISTING'
     assert source_tag(source) == '#xas'
+
+
+@pytest.mark.parametrize('platform', ['facebook', 'mudah'])
+def test_original_promotional_hashtags_removed_from_draft_but_retained_in_source(tmp_path, platform):
+    store = Store(tmp_path, Fernet.generate_key())
+    original = ('Jenis: Apartment #ForRent\nLokasi: Kajang #JohorProperty\n'
+                'Harga: RM 1,500 / bulan #Promo\nKemudahan: Pool #IQIRealty #RealtyiCan\n'
+                'Ejen: Original Agent #OldAgent')
+    r, _ = store.ingest(original, {'channel_username': 'AsrizadBakriListing'})
+    before = dict(r['fields'])
+    draft = generate(r, platform)
+    for key in ('title_bm', 'title_en', 'price', 'description_bm', 'description_en'):
+        for tag in ('#ForRent', '#JohorProperty', '#Promo', '#IQIRealty', '#RealtyiCan', '#OldAgent'):
+            assert tag not in draft[key]
+    assert draft['source_hashtags'] == ['#xas']
+    assert draft['description_bm'].count('#xas') == 1
+    assert draft['description_en'].count('#xas') == 1
+    assert r['fields'] == before
+    r['reuse_confirmed'] = True
+    with zipfile.ZipFile(manual_package(r, platform)) as archive:
+        exported = json.loads(archive.read('draft.json'))
+        assert exported['description_bm'] == draft['description_bm']
+        assert exported['description_en'] == draft['description_en']
+        assert exported['source_hashtags'] == ['#xas']
+        assert json.loads(archive.read('original-and-source.json'))['originals'] == [original]
+    assert store.get(r['id'])['originals'] == [original]
+
+
+def test_hashtag_cleaning_preserves_unit_numbers_and_url_fragments():
+    from laily.sources import remove_listing_hashtags
+    assert remove_listing_hashtags('Unit #A12, floor #12-03 #ForRent') == 'Unit #A12, floor #12-03'
+    assert remove_listing_hashtags('Info https://example.com/property#details #Promo') == 'Info https://example.com/property#details'
+    assert remove_listing_hashtags('#Tag1 #Tag2\nPool #Kolam') == 'Pool'

@@ -50,3 +50,21 @@ def source_hashtags(record):
 def source_needs_review(record):
     sources = record.get("sources", [])
     return not sources or any(source_tag(source) is None for source in sources)
+
+
+def remove_listing_hashtags(text):
+    """Remove promotional tags while preserving URLs and numbered property units."""
+    pattern = re.compile(r"https?://[^\s]+|(?<![\w/])#[\w]+", re.UNICODE)
+
+    def replace(match):
+        token = match.group()
+        if token.startswith(('http://', 'https://')):
+            return token
+        before, after = text[:match.start()], text[match.end():]
+        # #12, #12-03 and Unit #A12 can be factual unit numbers, not hashtags.
+        if token[1:].isdigit() or re.match(r"[-/]\d", after) or re.search(r"\b(?:unit|lot|no\.?)\s*$", before, re.I):
+            return token
+        return ''
+
+    cleaned = pattern.sub(replace, text)
+    return '\n'.join(re.sub(r'[ \t]+', ' ', line).strip() for line in cleaned.splitlines()).strip()

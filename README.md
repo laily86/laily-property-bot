@@ -255,3 +255,9 @@ berdasarkan nama ejen atau pautan dalam caption. `NEEDS_REVIEW` menyatakan sumbe
 channel direka. Versi ini belum menyediakan pemilihan sumber secara manual. Sumber asal dalam pangkalan data
 serta ZIP tetap dikekalkan. Profil `/profile` hanya menukar bahagian hubungan draf; ia tidak menukar sumber.
 Hashtag tidak membuktikan hak menggunakan listing/gambar atau bahawa hartanah masih tersedia.
+
+Hashtag promosi yang tertanam dalam medan listing asal (contohnya `#IQIRealty`, `#ForRent`) dibuang daripada tajuk,
+harga dan penerangan draf; hanya hashtag sumber yang ditetapkan ditambah pada akhir penerangan.
+Pembersihan dilakukan semasa menjana pratonton/eksport, bukan pada rekod asal. Nombor unit seperti `#12-03`,
+`Unit #A12` dan pautan URL dikekalkan untuk mengelakkan kehilangan fakta. Semak kes yang mengelirukan secara manual.
+Teks asal termasuk hashtag lamanya masih ada dalam `original-and-source.json` untuk rujukan, bukan untuk disiarkan.
