@@ -74,10 +74,13 @@ def review_reasons(record):
     return reasons
 
 
-def generate(record, platform):
+def generate(record, platform, contact_profile=None):
     if platform not in ("facebook", "mudah"):
         raise ValueError("Platform tidak sah")
-    f = record["fields"]
+    # Render a copy: original agent identity, REN and source records remain untouched.
+    f = dict(record["fields"])
+    if contact_profile is not None:
+        f["agent_details"] = contact_profile.contact_text()
     title = " — ".join(x for x in (f.get("property_type"), f.get("location")) if x) or "Hartanah / Property"
     price = f.get("price") or "Belum diketahui / Unknown"
     bm_labels = {"property_type": "Jenis", "location": "Lokasi", "bedrooms": "Bilik tidur",

@@ -190,3 +190,44 @@ pakej itu menyenaraikan isu untuk disemak dan tidak membuktikan listing sedia di
   sekatan akaun lain, album sebenar, pemulihan sandaran dan restart dengan kelayakan sendiri.
   Ujian langsung Telegram memerlukan token dan belum disahkan oleh demo offline.
 - Jika token terdedah, revoke melalui BotFather. Jangan matikan TLS atau cuba memintas sekatan platform.
+
+## Nama dan WhatsApp anda secara automatik pada semua draf
+
+Versi baharu menyediakan arahan `/profile` dalam **chat peribadi Telegram dengan bot**, bukan CMD.
+Tetapkan sekali sahaja dengan nama anda dan nombor WhatsApp urusan berkod negara:
+
+```text
+/profile Nama Anda | 60123456789
+```
+
+Nombor di atas ialah contoh; gantikan dengan nombor sendiri. Gunakan `60…` untuk Malaysia, bukan `01…`.
+REN dan agensi sendiri adalah pilihan:
+
+```text
+/profile Nama Anda | 60123456789 | REN 12345 | Agensi Anda
+```
+
+Jika mahu agensi tanpa REN, kosongkan bahagian REN: `/profile Nama Anda | 60123456789 | | Agensi Anda`.
+Jangan masukkan nombor REN atau agensi ejen asal sebagai identiti anda. Bot tidak mengesahkan lesen/pendaftaran REN.
+Hantar `/profile` sahaja untuk melihat profil semasa dan arahan. Untuk mengemas kini profil, hantar arahan yang sama
+dengan maklumat baharu; nilai REN/agensi yang tidak disertakan akan dikosongkan.
+
+Profil disimpan tersulit dalam SQLite sedia ada dan kekal selepas restart. Tiada rahsia baharu diperlukan dalam `.env`.
+Semua **pratonton dan eksport seterusnya**, termasuk untuk rekod lama, menggunakan nama, pautan WhatsApp `wa.me`,
+REN dan agensi daripada profil anda untuk bahagian hubungan. Teks asal, maklumat ejen asal dan sumber tidak ditukar
+atau dipadam; ia kekal dalam rekod dan fail `original-and-source.json` untuk rujukan. Fail rujukan asal bukan salinan
+iklan untuk disiarkan. Pakej ZIP yang sudah dimuat turun tidak berubah.
+
+Tanpa profil, bot mengekalkan tingkah laku lama menggunakan medan ejen daripada listing. Jika profil ditetapkan,
+Edit pada `agent_details` hanya mengemas kini rekod listing; paparan hubungan dalam draf tetap menggunakan profil.
+Profil tidak menggantikan perkataan di dalam fakta hartanah, teks asal atau watermark gambar; semak semuanya.
+Kebenaran menggunakan listing/gambar dan pengesahan ketersediaan masih diperlukan seperti biasa.
+Tiada fungsi publishing atau akses akaun platform ditambah.
+
+### Kemas kini pemasangan Windows sedia ada
+
+Hentikan bot dengan **Ctrl+C** dalam CMD sebelum menukar fail. Dapatkan versi baharu daripada branch yang mengandungi
+perubahan `/profile`. Gantikan fail kod projek dengan versi baharu (termasuk `laily/profile.py`), tetapi **kekalkan `.env`,
+folder `data/` dan kunci penyulitan sedia ada**. Jangan salin `.env.example` ke atas `.env`. Jika menggantikan keseluruhan
+folder, backup `.env` dan `data/` dahulu dan pulangkan kedua-duanya secara selamat sebelum menjalankan bot.
+Dependencies tidak berubah. Jalankan `python -m laily.bot` dari folder projek, kemudian tetapkan `/profile` dalam Telegram.

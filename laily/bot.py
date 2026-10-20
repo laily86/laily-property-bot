@@ -10,12 +10,13 @@ from .config import Settings
 from .integrations import platform_status
 from .listings import FIELDS, generate, review_reasons, validate_edits
 from .packages import manual_package
+from .profile import ContactProfile
 from .storage import MAX_PHOTO_BYTES, Store
 
 HELP = ("Laily Property Draft Automation — DRAF SAHAJA\n"
         "Forward teks/gambar/album dalam chat peribadi. Medan berlabel seperti Lokasi: dan Harga: lebih tepat.\n"
         "/drafts — senarai draf\n/facebook ID — pratonton Facebook\n/mudah ID — pratonton Mudah\n"
-        "/status — status integrasi\n/help — bantuan\n"
+        "/status — status integrasi\n/profile — profil nama dan WhatsApp untuk semua draf\n/help — bantuan\n"
         "Save Draft menyimpan draf tempatan dan menghantar ZIP manual selepas pengesahan hak guna. "
         "Tiada iklan diterbitkan atau disimpan dalam akaun platform.")
 
@@ -56,6 +57,31 @@ class Bot:
         chat_id = update.effective_chat.id
         if cmd in ("/start", "/help"):
             await self.send(context.bot, chat_id, HELP)
+        elif cmd == "/profile":
+            raw = update.effective_message.text.split(maxsplit=1)
+            if len(raw) == 1:
+                profile = self.store.contact_profile()
+                await self.send(context.bot, chat_id,
+                    ("Profil semasa:\n" + profile.contact_text() if profile else "Profil belum ditetapkan.") +
+                    "\n\nTetapkan dengan satu mesej:\n/profile Nama anda | Nombor WhatsApp kod negara"
+                    "\nContoh rekaan: /profile Ejen Contoh | 60123456789"
+                    "\nREN dan agensi sendiri adalah pilihan: /profile Nama | WhatsApp | REN 12345 | Agensi"
+                    "\nSemua pratonton dan pakej baharu (termasuk rekod lama) akan menggunakan profil ini. "
+                    "Pakej yang sudah dimuat turun tidak berubah. Sumber asal kekal disimpan. "
+                    "Gunakan listing hanya dengan kebenaran pemilik/ejen dan hak guna gambar.")
+                return
+            try:
+                profile = ContactProfile.parse(raw[1])
+            except ValueError as exc:
+                self.store.audit("contact_profile_rejected")
+                await self.send(context.bot, chat_id, str(exc))
+                return
+            self.store.set_contact_profile(profile)
+            await self.send(context.bot, chat_id,
+                "Profil disimpan secara tersulit. Semua pratonton dan eksport draf seterusnya akan menggunakan:\n" +
+                profile.contact_text() +
+                "\nNama, REN dan agensi ejen asal tidak digunakan sebagai identiti anda. "
+                "Teks asal dan sumber tetap disimpan. Tiada iklan diterbitkan.")
         elif cmd == "/status":
             await self.send(context.bot, chat_id, "\n".join(
                 f"{p}: {platform_status(p)['status']} — {platform_status(p)['reason']}" for p in ("facebook", "mudah")))
@@ -79,7 +105,7 @@ class Bot:
                 await self.send(context.bot, chat_id, "ID draf tidak ditemui.")
 
     async def preview(self, bot, chat_id, record, platform):
-        draft = generate(record, platform)
+        draft = generate(record, platform, self.store.contact_profile())
         self.store.audit("preview", record["id"], {"platform": platform})
         text = (f"{record['id']} | {platform.upper()} | LOCAL_DRAFT\n"
                 f"BM: {draft['title_bm']}\n{draft['description_bm']}\n\n"
@@ -108,7 +134,8 @@ class Bot:
                     "Hantar satu objek JSON untuk medan yang hendak dibetulkan. Medan: " + ", ".join(FIELDS) +
                     ', availability_confirmed. Contoh:\n{"location":"Kajang", "price":"RM 450,000", '
                     '"availability":"Tersedia", "availability_confirmed":true}\n'
-                    "Gunakan fakta yang anda sahkan sahaja. /help untuk batal.")
+                    "Gunakan fakta yang anda sahkan sahaja. Jika /profile ditetapkan, maklumat ejen dalam draf "
+                    "menggunakan profil anda; Edit tidak menggantikan profil. /help untuk batal.")
             elif action == "status":
                 await self.send(context.bot, chat_id, "LOCAL_DRAFT\n" +
                     ("NEEDS_REVIEW\n" if review_reasons(record) else "") +
@@ -131,7 +158,7 @@ class Bot:
                     reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Pakej Facebook", callback_data=f"export:facebook:{listing_id}"),
                                                         InlineKeyboardButton("Pakej Mudah", callback_data=f"export:mudah:{listing_id}")]]))
             elif action == "export":
-                package = manual_package(record, platform)
+                package = manual_package(record, platform, self.store.contact_profile())
                 self.store.audit("manual_export_requested", listing_id, {"platform": platform})
                 await context.bot.send_document(chat_id, InputFile(package, filename=f"{platform}-{listing_id}.zip"),
                     caption="Pakej manual sahaja. Tiada draf disimpan dalam akaun platform. Semak fakta sebelum penggunaan.")
@@ -244,7 +271,7 @@ class Bot:
 
     def application(self):
         app = Application.builder().token(self.settings.token).post_shutdown(self.shutdown).build()
-        app.add_handler(CommandHandler(["start", "help", "drafts", "facebook", "mudah", "status"], self.on_command))
+        app.add_handler(CommandHandler(["start", "help", "drafts", "facebook", "mudah", "status", "profile"], self.on_command))
         app.add_handler(CallbackQueryHandler(self.callback))
         app.add_handler(MessageHandler((filters.TEXT | filters.PHOTO) & ~filters.COMMAND, self.received))
         app.add_error_handler(self.error)

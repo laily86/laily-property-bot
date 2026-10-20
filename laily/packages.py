@@ -7,10 +7,10 @@ from .integrations import platform_status
 from .listings import generate
 
 
-def manual_package(record, platform):
+def manual_package(record, platform, contact_profile=None):
     if not record.get("reuse_confirmed"):
         raise PermissionError("Sahkan kebenaran menggunakan listing dan SEMUA gambar terlebih dahulu.")
-    draft = generate(record, platform)
+    draft = generate(record, platform, contact_profile)
     draft["integration"] = platform_status(platform)
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:

@@ -30,12 +30,15 @@ class Store:
                 CREATE TABLE IF NOT EXISTS listings (id TEXT PRIMARY KEY, payload BLOB NOT NULL);
                 CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, created TEXT NOT NULL,
                     event TEXT NOT NULL, listing_id TEXT, detail BLOB NOT NULL);
+                CREATE TABLE IF NOT EXISTS preferences (name TEXT PRIMARY KEY, payload BLOB NOT NULL);
                 CREATE TABLE IF NOT EXISTS events (event_id INTEGER PRIMARY KEY);
             ''')
             # Fail closed before any new writes if the supplied key cannot open existing data.
             sample = db.execute("SELECT payload FROM listings LIMIT 1").fetchone()
             if sample is None:
                 sample = db.execute("SELECT detail FROM audit LIMIT 1").fetchone()
+            if sample is None:
+                sample = db.execute("SELECT payload FROM preferences LIMIT 1").fetchone()
             if sample:
                 self.decrypt(sample[0])
         os.chmod(self.path, 0o600)
@@ -124,3 +127,15 @@ class Store:
                 db.execute("INSERT INTO events VALUES (?)", (event_id,))
             self._audit(db, "listing_received", record["id"], {"duplicate_candidates": record["duplicate_candidates"]})
         return record, "received"
+
+    def contact_profile(self):
+        from .profile import ContactProfile
+        with self.db() as db:
+            row = db.execute("SELECT payload FROM preferences WHERE name='contact_profile'").fetchone()
+        return ContactProfile(**self.decrypt(row[0])) if row else None
+
+    def set_contact_profile(self, profile):
+        with self.db() as db:
+            db.execute("INSERT OR REPLACE INTO preferences VALUES ('contact_profile', ?)",
+                       (self.encrypt(profile.to_dict()),))
+            self._audit(db, "contact_profile_updated", None, profile.to_dict())

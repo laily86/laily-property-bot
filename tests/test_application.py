@@ -190,5 +190,5 @@ async def test_real_transport_photo_album_accumulation_and_shutdown(bot):
 def test_application_registers_commands_and_callbacks_without_network(bot):
     app = bot.application()
     commands = app.handlers[0][0].commands
-    assert {"start", "drafts", "facebook", "mudah", "status", "help"} == set(commands)
+    assert {"start", "drafts", "facebook", "mudah", "status", "help", "profile"} == set(commands)
     assert len(app.handlers[0]) == 3
