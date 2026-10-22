@@ -1,18 +1,19 @@
-"""Conservative extraction. Unlabelled or ambiguous facts remain unknown."""
+"""Conservative extraction from labels and recognizable property headlines."""
 import hashlib
 import re
 
+from .extraction import headline_facts, is_land, unlabelled_room_count
 from .sources import remove_listing_hashtags, source_hashtags, source_needs_review
 
 FIELDS = ("property_type", "location", "price", "bedrooms", "bathrooms", "floor_area",
           "tenure", "facilities", "agent_details", "availability")
 LABELS = {
     "property_type": r"jenis(?: hartanah)?|property type|type",
-    "location": r"lokasi|location|alamat|address",
+    "location": r"lokasi(?: hartanah)?|location|alamat|address|nama projek|projek|project|kawasan",
     "price": r"harga|price|asking price",
     "bedrooms": r"bilik tidur|bedrooms?|rooms?",
     "bathrooms": r"bilik air|bathrooms?",
-    "floor_area": r"keluasan(?: binaan)?|built[- ]?up|floor area",
+    "floor_area": r"keluasan(?: binaan| tanah)?|built[- ]?up|floor area|land area|saiz tanah",
     "tenure": r"pegangan|tenure",
     "facilities": r"kemudahan|facilities",
     "agent_details": r"ejen|agent(?: details)?|contact|hubungi",
@@ -30,6 +31,11 @@ def extract(text):
         values = list(dict.fromkeys(x.strip() for x in matches if x.strip()))
         if len(values) == 1:
             result[field] = values[0]
+    inferred = headline_facts(text)
+    for field in ("property_type", "location", "bedrooms", "bathrooms"):
+        # Conflicting explicit labels must not be replaced with a guess.
+        if result[field] is None and not re.search(rf"^(?:{LABELS[field]})\s*[:=]", text, re.I | re.M):
+            result[field] = inferred[field] if field in inferred else unlabelled_room_count(text, field)
     # Never infer a rent period, currency, area unit or availability from context.
     result["availability_confirmed"] = False
     return result
@@ -72,10 +78,22 @@ def normalized_fields(fields):
     return f
 
 
-def review_reasons(record):
+def effective_fields(record):
     f = normalized_fields(record["fields"])
+    recovered = extract("\n".join(record.get("originals", [])))
+    for key in ("property_type", "location", "bedrooms", "bathrooms"):
+        if not f.get(key) and key not in record.get("manual_fields", []):
+            f[key] = recovered[key]
+    return f
+
+
+def review_reasons(record):
+    f = effective_fields(record)
     reasons = []
-    for key in ("property_type", "location", "price", "bedrooms", "bathrooms", "floor_area", "tenure"):
+    required = ("property_type", "location", "price", "floor_area")
+    if not is_land(f.get("property_type")):
+        required += ("bedrooms", "bathrooms")
+    for key in required:
         if not f.get(key):
             reasons.append(f"Belum diketahui: {key}")
     if not f.get("availability") or not f.get("availability_confirmed"):
@@ -98,7 +116,7 @@ def generate(record, platform, contact_profile=None):
         raise ValueError("Platform tidak sah")
     # Render a copy: original agent identity, REN and source records remain untouched.
     f = {key: (remove_listing_hashtags(value) if isinstance(value, str) else value)
-         for key, value in normalized_fields(record["fields"]).items()}
+         for key, value in effective_fields(record).items()}
     if contact_profile is not None:
         f["agent_details"] = contact_profile.contact_text()
     title = " — ".join(x for x in (f.get("property_type"), f.get("location")) if x) or "Hartanah / Property"
@@ -109,6 +127,8 @@ def generate(record, platform, contact_profile=None):
     en_labels = {"property_type": "Property type", "location": "Location", "bedrooms": "Bedrooms",
                  "bathrooms": "Bathrooms", "floor_area": "Floor area", "tenure": "Tenure",
                  "facilities": "Facilities", "agent_details": "Agent details", "availability": "Availability (original source)"}
+    if is_land(f.get("property_type")):
+        en_labels["floor_area"] = "Land area"
     bm = [f"{label}: {f[k]}" for k, label in bm_labels.items() if f.get(k)]
     en = [f"{label}: {f[k]}" for k, label in en_labels.items() if f.get(k)]
     if platform == "facebook":

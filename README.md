@@ -10,7 +10,7 @@ Tiada fungsi menerbitkan, submit untuk review, activate, boost atau schedule. Ti
 - Akses hanya untuk satu ID pengguna Telegram dalam chat peribadi; pemeriksaan turut meliputi callback butang.
 - Teks, gambar, caption dan album disimpan. Setiap foto album disimpan segera; pratonton digabungkan selepas 2 saat senyap.
   Album lewat masih dikaitkan selepas restart kerana ID album disimpan dalam pangkalan data.
-- Pengekstrakan konservatif berasaskan label; fakta tidak berlabel atau bercanggah dibiarkan kosong.
+- Pengekstrakan konservatif daripada label dan tajuk hartanah yang jelas; fakta kabur atau bercanggah dibiarkan kosong.
   Semak dan betulkan dengan Edit. Tiada AI luar menerima data listing.
 - Pengecaman pendua melalui teks ternormal, ID foto Telegram dan gabungan ciri hartanah.
   Padanan hanyalah calon; iklan unit berlainan boleh berkongsi ciri. Tiada rekod atau gambar dibuang secara automatik.
@@ -282,3 +282,26 @@ Mesej pratonton lama daripada sebelum kemas kini tidak dipadam automatik, kerana
 
 Label pada baris sama, seperti `Bedrooms: 3 Bathrooms: 2`, kini dipisahkan. Medan bilik tidur lama yang mengandungi
 label bilik air turut dibetulkan ketika paparan tanpa menukar teks asal atau meneka fakta lain yang tiada.
+
+
+## Butiran automatik dan senarai SEMAKAN dalam Telegram
+
+Aturan yang sama kini digunakan untuk pratonton Telegram dan eksport kedua-dua platform:
+
+- Jenis hartanah dibaca daripada label atau tajuk jelas seperti `APARTMENT JENTAYU TAMPOI`,
+  `Double storey terrace Taman Universiti`, atau `TANAH LOT DI KULAI`.
+- Lokasi menggunakan label alamat/lokasi/projek/kawasan atau nama tempat yang ditulis selepas jenis hartanah
+  pada tajuk tersebut. Bot tidak meneka bandar daripada gambar, nama ejen, nombor telefon atau tempat berdekatan.
+  Nama projek sahaja tidak membuktikan bandar atau alamat penuh; teks sumber tidak dikembangkan dengan fakta baharu.
+- Bilangan bilik dibaca daripada label atau frasa seperti `3 bedrooms 2 bathrooms` / `3 bilik tidur 2 bilik air`.
+  Nilai yang bercanggah atau tidak jelas masih memerlukan Edit.
+- Jika jenis hartanah jelas **tanah**, bilik tidur dan bilik air bukan medan wajib. Bot tidak mengisi `0` secara rekaan.
+  Keluasan berlabel `Land area`/`Keluasan tanah` dipaparkan sebagai keluasan tanah dalam draf tanah.
+- **Tenure tidak diwajibkan** dan tidak lagi menghasilkan `Belum diketahui: tenure`. Jika sumber menyatakan
+  Leasehold/Freehold, nilai sebenar masih boleh dipaparkan; bot tidak menciptanya jika tiada.
+
+Untuk draf lama, buka semula Preview Facebook atau Preview Mudah: butiran kosong yang jelas dalam teks asal
+boleh dilengkapkan pada paparan tanpa mengubah rekod asal. Edit baharu mempunyai keutamaan; medan yang sengaja
+dikosongkan dengan `null` melalui Edit tidak diisi semula. Padanan teks masih berasaskan aturan, bukan pemahaman
+bahasa bebas; semak lokasi dan jenis sebelum menggunakan pakej. Fakta wajib yang kabur, hak guna, sumber dan
+ketersediaan terus ditandakan untuk semakan. Semua tindakan kekal draf sahaja.

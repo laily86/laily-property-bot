@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from cryptography.fernet import Fernet
 
-from .listings import extract, fingerprint, normalized_fields, property_signature
+from .listings import effective_fields, extract, fingerprint, property_signature
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
 
@@ -176,8 +176,8 @@ class Store:
                 raise ValueError("Draf telah digabung. Buka semula /drafts.")
             if not source["photos"] or not target["originals"]:
                 raise ValueError("Pilih draf gambar sebagai sumber dan draf teks sebagai sasaran.")
-            fields = normalized_fields(target["fields"])
-            incoming = normalized_fields(source["fields"])
+            fields = effective_fields(target)
+            incoming = effective_fields(source)
             for key, value in incoming.items():
                 if key in ("availability_confirmed", "agent_details"):
                     continue

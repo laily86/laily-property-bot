@@ -266,6 +266,7 @@ class Bot:
                 edits = validate_edits(json.loads(text))
                 record = self.store.get(editing)
                 record["fields"].update(edits)
+                record["manual_fields"] = sorted(set(record.get("manual_fields", [])) | set(edits))
                 if "availability" in edits and "availability_confirmed" not in edits:
                     record["fields"]["availability_confirmed"] = False
                 record["reuse_confirmed"] = False
